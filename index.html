@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>送迎管理システム</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #eef2f7;
+      color: #0f172a;
+    }
+    header {
+      background: linear-gradient(135deg, #0f172a, #334155);
+      color: white;
+      padding: 34px 20px;
+    }
+    header .inner, main { max-width: 1320px; margin: 0 auto; }
+    h1 { margin: 0 0 8px; font-size: 34px; letter-spacing: 0.02em; }
+    h2 { margin: 0 0 16px; font-size: 22px; }
+    h3 { margin: 0 0 8px; font-size: 18px; }
+    p { line-height: 1.7; }
+    main { padding: 24px 16px 52px; }
+    .card {
+      background: rgba(255,255,255,0.96);
+      border-radius: 20px;
+      padding: 22px;
+      margin-bottom: 22px;
+      box-shadow: 0 10px 30px rgba(15,23,42,0.08);
+      border: 1px solid rgba(226,232,240,0.9);
+    }
+    .grid { display: grid; gap: 18px; }
+    .grid-2 { grid-template-columns: 1fr 1fr; }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    label { display: block; font-weight: 700; margin-bottom: 8px; color: #334155; }
+    input[type="number"], input[type="text"], input[type="time"], select, textarea {
+      width: 100%; border: 1px solid #cbd5e1; border-radius: 12px; padding: 11px 12px;
+      font-size: 15px; background: white; outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: #64748b; box-shadow: 0 0 0 3px rgba(100,116,139,0.16); }
+    input[type="file"] { width: 100%; padding: 18px; border: 2px dashed #94a3b8; border-radius: 18px; background: #f8fafc; }
+    textarea { min-height: 300px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1.6; white-space: pre-wrap; }
+    button {
+      border: none; border-radius: 12px; padding: 11px 16px; font-size: 15px; font-weight: 800;
+      cursor: pointer; background: #0f172a; color: white; transition: transform .08s ease, background .08s ease;
+    }
+    button:hover { background: #1e293b; }
+    button:active { transform: translateY(1px); }
+    button.secondary { background: #e2e8f0; color: #0f172a; }
+    button.secondary:hover { background: #cbd5e1; }
+    button.danger { background: #dc2626; }
+    button.small-btn { padding: 8px 11px; font-size: 13px; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .button-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    .summary-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 18px; padding: 16px; }
+    .summary-box .number { font-size: 28px; font-weight: 900; }
+    .table-wrap { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 18px; background: white; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1180px; background: white; }
+    th, td { border-bottom: 1px solid #e2e8f0; padding: 12px 10px; text-align: left; vertical-align: middle; font-size: 14px; line-height: 1.45; }
+    th { background: #f8fafc; color: #475569; position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+    td { word-break: keep-all; }
+    td .main-name { font-weight: 800; color: #0f172a; }
+    td .sub-text { margin-top: 3px; font-size: 12px; color: #64748b; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) { background: #fbfdff; }
+    tbody tr:hover { background: #f8fafc; }
+    .compact-table { min-width: 680px; }
+    .badge {
+      display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 10px;
+      font-size: 12px; font-weight: 800; background: #e2e8f0; color: #334155; white-space: nowrap;
+    }
+    .badge.car { background: #dbeafe; color: #1d4ed8; }
+    .badge.train { background: #dcfce7; color: #15803d; }
+    .badge.warn { background: #fef3c7; color: #92400e; }
+    .badge.gray { background: #f1f5f9; color: #475569; }
+    .badge.exec { background: #f3e8ff; color: #7e22ce; }
+    .result-card { border: 1px solid #e2e8f0; border-radius: 18px; padding: 16px; margin-bottom: 12px; background: #fff; }
+    .result-card-header { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .small { font-size: 13px; color: #64748b; }
+    .muted { color: #64748b; }
+    .error, .success { padding: 12px; border-radius: 12px; margin-top: 12px; display: none; }
+    .error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .success { background: #ecfdf5; color: #166534; border: 1px solid #bbf7d0; }
+    .priority-help { margin-top: 8px; color: #64748b; font-size: 13px; line-height: 1.6; }
+    .car-settings-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 14px; }
+    .car-setting-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 14px; }
+    .car-setting-title { font-weight: 900; margin-bottom: 10px; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+    .place-cell { display: grid; grid-template-columns: minmax(110px, .9fr) minmax(150px, 1.1fr); gap: 8px; min-width: 280px; }
+    .reason-text { max-width: 260px; white-space: normal; word-break: break-word; color: #475569; font-size: 13px; line-height: 1.55; }
+    .route-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+    .route-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 14px; }
+    .route-title { font-weight: 900; margin-bottom: 10px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 900px) {
+      .grid-2, .grid-3, .grid-4, .two-col { grid-template-columns: 1fr; }
+      h1 { font-size: 27px; }
+      .place-cell { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="inner">
+      <h1>送迎管理システム</h1>
+      <p>学生の車・実行委員の車を分けて登録し、茨大・赤塚駅など集合場所ごとの配車表を作成します。</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>1. Excel / CSVを読み込む</h2>
+      <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" />
+      <p class="small">Microsoft Formsの回答Excelをそのまま読み込めます。データは外部送信されず、このブラウザ内だけで処理します。</p>
+      <div id="fileMessage" class="success"></div>
+      <div id="errorMessage" class="error"></div>
+    </section>
+
+    <section id="columnSection" class="card" style="display: none;">
+      <h2>2. 列の確認</h2>
+      <p class="small">アンケート項目名を自動で探します。違っていたら手動で選び直してください。</p>
+      <div class="grid grid-4">
+        <div><label for="nameColumn">名前として使う列</label><select id="nameColumn"></select></div>
+        <div><label for="kanaColumn">フリガナの列</label><select id="kanaColumn"></select></div>
+        <div><label for="nicknameColumn">表示名として使う列</label><select id="nicknameColumn"></select></div>
+        <div><label for="gradeColumn">学年の列</label><select id="gradeColumn"></select></div>
+        <div><label for="livingColumn">居住形態の列</label><select id="livingColumn"></select></div>
+        <div><label for="bikeColumn">自転車・車の列</label><select id="bikeColumn"></select></div>
+        <div><label for="stationColumn">最寄り駅の列</label><select id="stationColumn"></select></div>
+        <div><label for="selfColumn">駅まで自力で行けるかの列</label><select id="selfColumn"></select></div>
+        <div><label for="placeColumn">希望集合場所の列</label><select id="placeColumn"></select></div>
+        <div><label for="requestColumn">要望の列</label><select id="requestColumn"></select></div>
+      </div>
+      <div class="button-row"><button id="applyColumnsButton">この列で読み直す</button></div>
+    </section>
+
+    <section class="card">
+      <h2>3. 集合場所・時間・責任者</h2>
+      <p class="small">実行委員と共有する文面の「☆茨大11:30」「責任者：〇〇」に反映されます。</p>
+      <div id="routeSettings" class="route-grid"></div>
+      <div class="button-row">
+        <button id="addRouteButton" class="secondary">集合場所を追加</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>4. 車の設定</h2>
+      <div class="grid grid-4">
+        <div><label for="carCount">車の台数</label><input id="carCount" type="number" min="0" value="2" /></div>
+        <div><label for="defaultCapacity">基本定員</label><input id="defaultCapacity" type="number" min="1" value="4" /></div>
+        <div>
+          <label for="sortMode">学生の並べ方</label>
+          <select id="sortMode">
+            <option value="priority">優先度順</option>
+            <option value="kana">50音順</option>
+            <option value="grade">学年順</option>
+            <option value="grade-kana">学年順 → 50音順</option>
+            <option value="name">名前順</option>
+          </select>
+        </div>
+        <div class="summary-box"><div class="small">車の定員合計</div><div id="totalSeats" class="number">8人</div></div>
+      </div>
+      <div id="carSettings" class="car-settings-list"></div>
+      <div class="priority-help">
+        「実行委員の車」は運転者を学生から選ばなくても使えます。「学生の車」にした場合、運転者にした学生は確定で車組になります。
+      </div>
+      <div class="button-row">
+        <button id="assignButton">割り振りを実行</button>
+        <button id="resetButton" class="secondary">当日設定をリセット</button>
+      </div>
+    </section>
+
+    <section id="memberSection" class="card" style="display: none;">
+      <h2>5. 参加者・学生運転者・イレギュラー対応</h2>
+      <p class="small">学生が運転する場合だけ「学生運転者」にチェックしてください。実行委員の車に乗るだけならチェック不要です。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>参加</th><th>学生運転者</th><th>学生</th><th>学年</th><th>居住/移動</th><th>当日の集合場所</th><th>優先度調整</th><th>優先度</th><th>要望・補足</th>
+            </tr>
+          </thead>
+          <tbody id="memberTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="resultSection" class="grid grid-2" style="display: none;">
+      <div class="card"><h2>集合場所ごとの配車</h2><div id="routeResults"></div></div>
+      <div class="card"><h2>電車・未配車</h2><div id="trainResults"></div></div>
+    </section>
+
+    <section id="lineSection" class="card" style="display: none;">
+      <h2>実行委員共有用テキスト</h2>
+      <textarea id="lineText" readonly></textarea>
+      <div class="button-row">
+        <button id="copyButton">コピー</button>
+        <button id="downloadButton" class="secondary">結果をCSVでダウンロード</button>
+      </div>
+      <div id="copyMessage" class="success">コピーしました。</div>
+    </section>
+  </main>
+
+  <script>
+    let rawRows = [];
+    let columns = [];
+    let members = [];
+    let carConfigs = [];
+    let routeConfigs = [
+      { id: "route-1", name: "茨大", time: "11:30", leader: "", enabled: true },
+      { id: "route-2", name: "友部駅", time: "11:20", leader: "", enabled: true },
+      { id: "route-3", name: "荒川沖駅", time: "", leader: "", enabled: true }
+    ];
+    let latestResult = null;
+
+    const fileInput = document.getElementById("fileInput");
+    const fileMessage = document.getElementById("fileMessage");
+    const errorMessage = document.getElementById("errorMessage");
+    const columnSection = document.getElementById("columnSection");
+    const memberSection = document.getElementById("memberSection");
+    const resultSection = document.getElementById("resultSection");
+    const lineSection = document.getElementById("lineSection");
+    const memberTableBody = document.getElementById("memberTableBody");
+    const carCountInput = document.getElementById("carCount");
+    const defaultCapacityInput = document.getElementById("defaultCapacity");
+    const totalSeats = document.getElementById("totalSeats");
+    const carSettings = document.getElementById("carSettings");
+    const routeSettings = document.getElementById("routeSettings");
+    const sortModeInput = document.getElementById("sortMode");
+
+    const selectIds = ["nameColumn","kanaColumn","nicknameColumn","gradeColumn","livingColumn","bikeColumn","stationColumn","selfColumn","placeColumn","requestColumn"];
+    const columnCandidates = {
+      nameColumn: ["氏名", "名前", "お名前"], kanaColumn: ["フリガナ", "ふりがな", "カナ"], nicknameColumn: ["ニックネーム", "はが路でのニックネーム"], gradeColumn: ["学年"],
+      livingColumn: ["現在の居住形態", "居住形態", "一人暮らし", "住まい"], bikeColumn: ["自転車の所有状況", "自転車", "車を持っている"], stationColumn: ["最寄り駅", "赤塚駅", "水戸駅"],
+      selfColumn: ["赤塚駅or水戸駅まで自力", "赤塚駅 or 水戸駅まで自力", "自力で行って", "駅まで自力"], placeColumn: ["希望の集合場所", "集合場所", "希望乗車場所"], requestColumn: ["送迎について要望", "要望", "伝えたいこと"]
+    };
+
+    function normalizeText(value) { return String(value ?? "").trim().replace(/\s+/g, "").replace(/[（）()〈〉<>]/g, "").toLowerCase(); }
+    function findColumn(candidates) { for (const c of candidates) { const f = columns.find(col => normalizeText(col).includes(normalizeText(c))); if (f) return f; } return ""; }
+    function getValue(row, columnName) { if (!columnName) return ""; return row[columnName] ?? ""; }
+    function detectStation(value) { const t = normalizeText(value); if (t.includes("赤塚")) return "赤塚駅"; if (t.includes("水戸")) return "水戸駅"; if (t.includes("勝田")) return "勝田駅"; if (t.includes("内原")) return "内原駅"; if (t.includes("友部")) return "友部駅"; if (t.includes("荒川沖")) return "荒川沖駅"; if (t.includes("土浦")) return "土浦駅"; if (t.includes("大学") || t.includes("茨大")) return "茨大"; if (t.includes("その他") || t.includes("他")) return "その他"; return String(value ?? "").trim() || "未設定"; }
+    function detectFirstPreferredPlace(value, station) {
+      const n = normalizeText(value); const places = ["茨大", "大学", "赤塚駅", "水戸駅", "勝田駅", "内原駅", "友部駅", "荒川沖駅", "その他"];
+      const found = places.map(p => ({ place: p === "大学" ? "茨大" : p, index: n.indexOf(normalizeText(p)) })).filter(x => x.index >= 0).sort((a,b) => a.index - b.index);
+      if (found.length) return found[0].place; if (station && station !== "未設定") return station; return "茨大";
+    }
+
+    function decideInitialRoute({ livingType, station, preferredPlace, routeNames }) {
+      const homeSideStations = ["勝田駅", "水戸駅", "内原駅"];
+      const hasTomobe = routeNames.includes("友部駅");
+      const hasIbaraki = routeNames.includes("茨大");
+
+      // 希望集合場所が、実際に車を出す集合場所として登録されている場合は、それを優先する。
+      if (routeNames.includes(preferredPlace)) return preferredPlace;
+
+      // 実家住みなどで勝田・水戸・内原方面から来る学生は、大学へ戻らず電車で友部駅集合に寄せる。
+      if ((livingType !== "一人暮らし" || homeSideStations.includes(station)) && homeSideStations.includes(station) && hasTomobe) {
+        return "友部駅";
+      }
+
+      // 赤塚駅・水戸駅・勝田駅・内原駅など、登録されていない駅を希望している場合も、友部駅送迎があれば友部駅に寄せる。
+      if (["赤塚駅", "水戸駅", "勝田駅", "内原駅"].includes(preferredPlace) && hasTomobe) return "友部駅";
+
+      // 大学周辺の人は基本的に茨大集合。
+      if (hasIbaraki) return "茨大";
+      return routeNames[0] || preferredPlace || "未設定";
+    }
+    function hasUsableBike(value) { const t = normalizeText(value); return t.includes("持っている") && !t.includes("持っていない") && !t.includes("車を持っている"); }
+    function hasCar(value) { return normalizeText(value).includes("車を持っている"); }
+    function canGoStation(value) { const t = normalizeText(value); if (t.includes("できる")) return true; if (t.includes("難しい") || t.includes("できない")) return false; return false; }
+    function gradeRank(grade) { const t = normalizeText(grade); if (t.includes("1年")) return 1; if (t.includes("2年")) return 2; if (t.includes("3年")) return 3; if (t.includes("4年")) return 4; if (t.includes("大学院")) return 5; return 99; }
+    function calculatePriority(member) { let s = 0; if (member.driver) s += 1000; if (!member.canGoStation) s += 60; if (!member.hasCar) s += 40; if (!member.hasBike) s += 25; if (member.ridePlace === "茨大" || member.ridePlace === "大学") s += 20; if (member.livingType === "一人暮らし") s += 10; if (member.ridePlace === "その他" || member.ridePlace === "個別対応") s += 5; s += Number(member.priorityAdjust) || 0; return s; }
+    function escapeHtml(value) { return String(value ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;"); }
+    function showError(message) { errorMessage.textContent = message; errorMessage.style.display = "block"; }
+    function hideError() { errorMessage.style.display = "none"; errorMessage.textContent = ""; }
+    function showSuccess(el, msg) { el.textContent = msg; el.style.display = "block"; }
+    function hideSuccess(el) { el.style.display = "none"; el.textContent = ""; }
+    function getRouteNames() { return routeConfigs.filter(r => r.enabled && r.name.trim()).map(r => r.name.trim()); }
+    function normalizeRouteName(name) { if (name === "大学") return "茨大"; return name; }
+
+    function sortMembersForDisplay(list) {
+      const mode = sortModeInput.value;
+      return [...list].sort((a,b) => {
+        if (mode === "kana") return a.kana.localeCompare(b.kana,"ja") || a.displayName.localeCompare(b.displayName,"ja");
+        if (mode === "grade") return gradeRank(a.grade) - gradeRank(b.grade) || a.kana.localeCompare(b.kana,"ja");
+        if (mode === "grade-kana") return gradeRank(a.grade) - gradeRank(b.grade) || a.kana.localeCompare(b.kana,"ja") || a.displayName.localeCompare(b.displayName,"ja");
+        if (mode === "name") return a.displayName.localeCompare(b.displayName,"ja");
+        return b.priority - a.priority || a.kana.localeCompare(b.kana,"ja") || a.displayName.localeCompare(b.displayName,"ja");
+      });
+    }
+
+    function fillColumnSelects() {
+      for (const id of selectIds) {
+        const select = document.getElementById(id); const auto = findColumn(columnCandidates[id] || []); const required = id === "nameColumn"; select.innerHTML = "";
+        if (!required) { const op = document.createElement("option"); op.value = ""; op.textContent = "使わない"; select.appendChild(op); }
+        for (const col of columns) { const op = document.createElement("option"); op.value = col; op.textContent = col; select.appendChild(op); }
+        if (auto) select.value = auto;
+      }
+    }
+    function getColumnMap() { return { name: document.getElementById("nameColumn").value, kana: document.getElementById("kanaColumn").value, nickname: document.getElementById("nicknameColumn").value, grade: document.getElementById("gradeColumn").value, living: document.getElementById("livingColumn").value, bike: document.getElementById("bikeColumn").value, station: document.getElementById("stationColumn").value, self: document.getElementById("selfColumn").value, place: document.getElementById("placeColumn").value, request: document.getElementById("requestColumn").value }; }
+
+    function buildMembers() {
+      const map = getColumnMap(); if (!map.name) { showError("名前として使う列を選んでください。"); return; }
+      const routeNames = getRouteNames();
+      members = rawRows.map((row, index) => {
+        const fullName = String(getValue(row,map.name)).trim(); const kana = String(getValue(row,map.kana)).trim(); const nickname = String(getValue(row,map.nickname)).trim();
+        const displayName = nickname || fullName || `名前未設定${index + 1}`; const grade = String(getValue(row,map.grade)).trim() || "未設定";
+        const livingTypeRaw = String(getValue(row,map.living)).trim(); const bikeRaw = String(getValue(row,map.bike)).trim(); const stationRaw = String(getValue(row,map.station)).trim();
+        const selfRaw = String(getValue(row,map.self)).trim(); const placeRaw = String(getValue(row,map.place)).trim(); const request = String(getValue(row,map.request)).trim();
+        const station = detectStation(stationRaw); let preferredPlace = normalizeRouteName(detectFirstPreferredPlace(placeRaw, station));
+        preferredPlace = decideInitialRoute({ livingType: livingTypeRaw || "未設定", station, preferredPlace, routeNames });
+        return { id: `member-${index}`, participating: true, driver: false, displayName, fullName, kana, grade, livingType: livingTypeRaw || "未設定", bikeStatus: bikeRaw || "未設定", hasBike: hasUsableBike(bikeRaw), hasCar: hasCar(bikeRaw), nearestStation: station, canGoStation: canGoStation(selfRaw), selfMoveRaw: selfRaw || "未設定", preferredPlace, ridePlace: preferredPlace, customPlace: "", priorityAdjust: 0, request, dayNote: "" };
+      }).filter(m => m.fullName || m.displayName);
+      renderMemberTable(); memberSection.style.display = "block"; hideError();
+    }
+
+    function renderRouteSettings() {
+      routeSettings.innerHTML = routeConfigs.map((route, index) => `
+        <div class="route-card">
+          <div class="route-title">集合場所 ${index + 1}</div>
+          <label><input type="checkbox" data-route-id="${route.id}" data-key="enabled" ${route.enabled ? "checked" : ""}> 使用する</label>
+          <label>場所名</label><input type="text" data-route-id="${route.id}" data-key="name" value="${escapeHtml(route.name)}" placeholder="例：茨大、友部駅、荒川沖駅">
+          <div class="two-col" style="margin-top: 10px;">
+            <div><label>集合時刻</label><input type="time" data-route-id="${route.id}" data-key="time" value="${escapeHtml(route.time)}"></div>
+            <div><label>責任者</label><input type="text" data-route-id="${route.id}" data-key="leader" value="${escapeHtml(route.leader)}" placeholder="例：〇〇"></div>
+          </div>
+          <div class="button-row"><button class="danger small-btn" data-delete-route="${route.id}">削除</button></div>
+        </div>
+      `).join("");
+      routeSettings.querySelectorAll("input").forEach(input => input.addEventListener("input", handleRouteChange));
+      routeSettings.querySelectorAll("input[type='checkbox']").forEach(input => input.addEventListener("change", handleRouteChange));
+      routeSettings.querySelectorAll("button[data-delete-route]").forEach(btn => btn.addEventListener("click", e => { routeConfigs = routeConfigs.filter(r => r.id !== e.target.dataset.deleteRoute); renderRouteSettings(); ensureCarConfigs(); if (members.length) renderMemberTable(); }));
+    }
+    function handleRouteChange(event) {
+      const route = routeConfigs.find(r => r.id === event.target.dataset.routeId); if (!route) return;
+      const key = event.target.dataset.key; route[key] = event.target.type === "checkbox" ? event.target.checked : event.target.value;
+      if (key === "name" && members.length) renderMemberTable();
+    }
+
+    function renderMemberTable() {
+      memberTableBody.innerHTML = "";
+      const displayMembers = sortMembersForDisplay(members.map(m => ({ ...m, priority: calculatePriority(m) })));
+      const routeOptions = [...getRouteNames(), "その他", "個別対応", "未設定"];
+      for (const member of displayMembers) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><input type="checkbox" data-id="${member.id}" data-key="participating" ${member.participating ? "checked" : ""}></td>
+          <td><input type="checkbox" data-id="${member.id}" data-key="driver" ${member.driver ? "checked" : ""}></td>
+          <td><div class="main-name">${escapeHtml(member.displayName)}</div><div class="sub-text">${escapeHtml(member.fullName)}${member.kana ? ` / ${escapeHtml(member.kana)}` : ""}</div></td>
+          <td><span class="badge gray">${escapeHtml(member.grade)}</span></td>
+          <td><div>${escapeHtml(member.livingType)}</div><div class="sub-text">${escapeHtml(member.bikeStatus)} / ${escapeHtml(member.nearestStation)}</div><div class="sub-text">駅まで：${escapeHtml(member.selfMoveRaw)}</div></td>
+          <td><div class="place-cell"><select data-id="${member.id}" data-key="ridePlace">${routeOptions.map(p => `<option value="${p}" ${member.ridePlace === p ? "selected" : ""}>${p}</option>`).join("")}</select><input type="text" data-id="${member.id}" data-key="customPlace" value="${escapeHtml(member.customPlace)}" placeholder="例：自宅、バイト先、〇〇駅"></div></td>
+          <td><input type="number" data-id="${member.id}" data-key="priorityAdjust" value="${member.priorityAdjust}" style="width: 90px;"></td>
+          <td><strong>${calculatePriority(member)}</strong></td>
+          <td><div class="reason-text">${member.request ? `<span class="badge warn">要望</span> ${escapeHtml(member.request)}` : `<span class="muted">要望なし</span>`}</div><input type="text" data-id="${member.id}" data-key="dayNote" value="${escapeHtml(member.dayNote)}" placeholder="当日の補足" style="margin-top: 8px; min-width: 180px;"></td>
+        `;
+        memberTableBody.appendChild(tr);
+      }
+      memberTableBody.querySelectorAll("input, select").forEach(input => {
+        input.addEventListener("change", handleMemberInputChange);
+        input.addEventListener("input", e => { if (e.target.type === "text" || e.target.type === "number") handleMemberInputChange(e, false); });
+      });
+    }
+    function handleMemberInputChange(event, rerender = true) {
+      const member = members.find(x => x.id === event.target.dataset.id); if (!member) return;
+      const key = event.target.dataset.key;
+      if (event.target.type === "checkbox") member[key] = event.target.checked;
+      else if (event.target.type === "number") member[key] = Number(event.target.value) || 0;
+      else member[key] = event.target.value;
+      if (rerender) renderMemberTable();
+    }
+
+    function ensureCarConfigs() {
+      const count = Math.max(0, Number(carCountInput.value) || 0); const def = Math.max(1, Number(defaultCapacityInput.value) || 1); const routeNames = getRouteNames();
+      const next = [];
+      for (let i = 0; i < count; i++) next.push({ id: `car-${i+1}`, carNumber: i+1, capacity: carConfigs[i]?.capacity || def, memo: carConfigs[i]?.memo || "", driverType: carConfigs[i]?.driverType || "executive", driverName: carConfigs[i]?.driverName || "", studentDriverId: carConfigs[i]?.studentDriverId || "", route: carConfigs[i]?.route || routeNames[0] || "茨大" });
+      carConfigs = next; renderCarSettings(); updateTotalSeats();
+    }
+    function renderCarSettings() {
+      const routeNames = getRouteNames();
+      if (!carConfigs.length) { carSettings.innerHTML = `<div class="small">車の台数を1台以上にすると、車ごとの定員・運転者・集合場所を設定できます。</div>`; return; }
+      carSettings.innerHTML = carConfigs.map(config => `
+        <div class="car-setting-card">
+          <div class="car-setting-title"><span>${config.carNumber}号車</span><span class="badge ${config.driverType === "executive" ? "exec" : "car"}">${config.driverType === "executive" ? "実行委員" : "学生"}</span></div>
+          <div class="two-col"><div><label>定員</label><input type="number" min="1" value="${config.capacity}" data-car-number="${config.carNumber}" data-key="capacity"></div><div><label>集合場所</label><select data-car-number="${config.carNumber}" data-key="route">${routeNames.map(r => `<option value="${r}" ${config.route === r ? "selected" : ""}>${r}</option>`).join("")}<option value="その他" ${config.route === "その他" ? "selected" : ""}>その他</option></select></div></div>
+          <label style="margin-top: 10px;">運転者の種類</label><select data-car-number="${config.carNumber}" data-key="driverType"><option value="executive" ${config.driverType === "executive" ? "selected" : ""}>実行委員・社会人</option><option value="student" ${config.driverType === "student" ? "selected" : ""}>学生</option></select>
+          ${config.driverType === "student" ? `<label style="margin-top: 10px;">学生運転者</label><select data-car-number="${config.carNumber}" data-key="studentDriverId"><option value="">未選択</option>${members.map(m => `<option value="${m.id}" ${config.studentDriverId === m.id ? "selected" : ""}>${escapeHtml(m.displayName)}</option>`).join("")}</select>` : `<label style="margin-top: 10px;">実行委員・社会人の運転者名</label><input type="text" value="${escapeHtml(config.driverName)}" placeholder="例：なるいさん、団長、りえ" data-car-number="${config.carNumber}" data-key="driverName">`}
+          <label style="margin-top: 10px;">車メモ</label><input type="text" value="${escapeHtml(config.memo)}" placeholder="例：荷物多め、後部座席2人" data-car-number="${config.carNumber}" data-key="memo">
+        </div>
+      `).join("");
+      carSettings.querySelectorAll("input, select").forEach(input => input.addEventListener("input", handleCarConfigChange));
+      carSettings.querySelectorAll("select").forEach(input => input.addEventListener("change", handleCarConfigChange));
+    }
+    function handleCarConfigChange(event) {
+      const config = carConfigs.find(c => c.carNumber === Number(event.target.dataset.carNumber)); if (!config) return;
+      const key = event.target.dataset.key;
+      if (key === "capacity") config.capacity = Math.max(1, Number(event.target.value) || 1); else config[key] = event.target.value;
+      if (key === "studentDriverId") { const student = members.find(m => m.id === config.studentDriverId); if (student) { student.driver = true; student.participating = true; student.ridePlace = config.route; } }
+      if (key === "driverType") { if (config.driverType === "executive") config.studentDriverId = ""; }
+      updateTotalSeats(); renderCarSettings(); if (members.length) renderMemberTable();
+    }
+    function updateTotalSeats() { totalSeats.textContent = `${carConfigs.reduce((s,c) => s + (Number(c.capacity)||0), 0)}人`; }
+    function getDisplayPlace(member) { return member.customPlace?.trim() ? `${member.ridePlace}（${member.customPlace.trim()}）` : member.ridePlace; }
+    function getCarDriverLabel(car) { return car.driverType === "student" ? (car.studentDriver?.displayName || "学生運転者未設定") : (car.driverName || "運転者未設定"); }
+
+    function assignCars() {
+      ensureCarConfigs();
+      for (const config of carConfigs) {
+        if (config.driverType === "student" && config.studentDriverId) {
+          const student = members.find(m => m.id === config.studentDriverId);
+          if (student) { student.driver = true; student.participating = true; student.ridePlace = config.route; }
+        }
+      }
+
+      const active = members.filter(m => m.participating).map(m => ({ ...m, priority: calculatePriority(m) }));
+      const studentDriverIds = new Set(carConfigs.filter(c => c.driverType === "student" && c.studentDriverId).map(c => c.studentDriverId));
+      const regularStudents = active
+        .filter(m => !studentDriverIds.has(m.id))
+        .sort((a,b) => b.priority - a.priority || a.kana.localeCompare(b.kana,"ja") || a.displayName.localeCompare(b.displayName,"ja"));
+
+      const cars = carConfigs.map(config => ({
+        ...config,
+        studentDriver: config.studentDriverId ? active.find(m => m.id === config.studentDriverId) : null,
+        passengers: []
+      }));
+      for (const car of cars) if (car.studentDriver) car.passengers.push(car.studentDriver);
+
+      const trainMembers = [];
+      const studentsByRoute = new Map();
+      const routeNames = getRouteNames();
+
+      for (const student of regularStudents) {
+        const route = routeNames.includes(student.ridePlace) ? student.ridePlace : "未配車";
+        if (!studentsByRoute.has(route)) studentsByRoute.set(route, []);
+        studentsByRoute.get(route).push(student);
+      }
+
+      // まずは、各集合場所に設定された車へ、その集合場所希望の学生を入れる。
+      for (const car of cars) {
+        const routeStudents = studentsByRoute.get(car.route) || [];
+        while (routeStudents.length && car.passengers.length < car.capacity) {
+          car.passengers.push(routeStudents.shift());
+        }
+      }
+
+      // 茨大集合があふれた場合、自力で駅まで行ける人・自転車ありの人を赤塚駅から電車に回す。
+      const ibadaiRemaining = studentsByRoute.get("茨大") || [];
+      const stillNeedCar = [];
+      for (const student of ibadaiRemaining) {
+        if (student.hasBike || student.canGoStation) {
+          trainMembers.push({
+            ...student,
+            ridePlace: "赤塚駅",
+            customPlace: student.customPlace || "電車移動",
+            dayNote: student.dayNote || "茨大集合が満員のため赤塚駅から電車"
+          });
+        } else {
+          stillNeedCar.push(student);
+        }
+      }
+      studentsByRoute.set("茨大", stillNeedCar);
+
+      // 友部駅など、大学以外の集合場所であふれた人は、そのまま電車・確認枠へ。
+      for (const [route, remaining] of studentsByRoute.entries()) {
+        if (route === "茨大") trainMembers.push(...remaining.map(m => ({ ...m, dayNote: m.dayNote || "車不足のため要確認" })));
+        else trainMembers.push(...remaining.map(m => ({ ...m, dayNote: m.dayNote || `${route}集合で車不足のため要確認` })));
+      }
+
+      const usedStudentDriverIds = new Set([...studentDriverIds]);
+      const cleanedTrain = trainMembers.filter(m => !usedStudentDriverIds.has(m.id));
+
+      latestResult = { cars, trainMembers: cleanedTrain, routes: [...routeConfigs], totalCapacity: carConfigs.reduce((s,c) => s + c.capacity, 0) };
+      renderResults(latestResult);
+    }
+
+    function renderResults(result) {
+      const routeResults = document.getElementById("routeResults"); const trainResults = document.getElementById("trainResults");
+      const enabledRoutes = result.routes.filter(r => r.enabled && r.name.trim());
+      routeResults.innerHTML = enabledRoutes.map(route => {
+        const cars = result.cars.filter(c => c.route === route.name);
+        const count = cars.reduce((sum, car) => sum + car.passengers.length, 0);
+        return `
+          <div class="result-card">
+            <div class="result-card-header"><h3>☆${escapeHtml(route.name)}${route.time ? escapeHtml(route.time) : ""}</h3><span class="badge car">${count}名分</span></div>
+            <p><strong>責任者：</strong>${escapeHtml(route.leader || "未設定")}</p>
+            ${cars.length ? cars.map(car => `<p>🛞${escapeHtml(getCarDriverLabel(car))}　${car.passengers.length}人 <span class="small">定員${car.capacity}${car.memo ? ` / ${escapeHtml(car.memo)}` : ""}</span></p><div class="small">${car.passengers.map(p => escapeHtml(p.displayName)).join("、") || "乗車なし"}</div>`).join("") : `<p class="small">この集合場所に車がありません。</p>`}
+          </div>`;
+      }).join("");
+
+      if (!result.trainMembers.length) trainResults.innerHTML = `<p><span class="badge train">なし</span> 未配車の学生はいません。</p>`;
+      else {
+        const display = sortMembersForDisplay(result.trainMembers);
+        trainResults.innerHTML = `<div class="table-wrap"><table class="compact-table"><thead><tr><th>学生</th><th>集合場所</th><th>補足</th><th>優先度</th></tr></thead><tbody>${display.map(m => `<tr><td><div class="main-name">${escapeHtml(m.displayName)}</div><div class="sub-text">${escapeHtml(m.grade)} / ${escapeHtml(m.fullName)}</div></td><td>${escapeHtml(getDisplayPlace(m))}</td><td>${escapeHtml(m.dayNote || m.request || "")}</td><td>${m.priority}</td></tr>`).join("")}</tbody></table></div>`;
+      }
+      document.getElementById("lineText").value = createLineText(result); resultSection.style.display = "grid"; lineSection.style.display = "block";
+    }
+
+    function createLineText(result) {
+      const lines = []; lines.push("茨大行きの送迎について");
+      for (const route of result.routes.filter(r => r.enabled && r.name.trim())) {
+        const cars = result.cars.filter(c => c.route === route.name); const count = cars.reduce((s,c) => s + c.passengers.length, 0);
+        lines.push(`☆${route.name}${route.time || ""}`); lines.push(`${count}名分`); lines.push(`責任者：${route.leader || "未設定"}`);
+        for (const car of cars) lines.push(`🛞${getCarDriverLabel(car)}${car.passengers.length}人`);
+        lines.push("");
+      }
+      if (result.trainMembers.length) { lines.push("【未配車・確認】"); for (const m of sortMembersForDisplay(result.trainMembers)) lines.push(`${m.displayName}：${getDisplayPlace(m)}${m.dayNote ? `（${m.dayNote}）` : ""}`); }
+      return lines.join("\n");
+    }
+
+    function resetDaySettings() {
+      members = members.map(m => ({ ...m, participating: true, driver: false, ridePlace: m.preferredPlace, customPlace: "", priorityAdjust: 0, dayNote: "" }));
+      latestResult = null; resultSection.style.display = "none"; lineSection.style.display = "none"; ensureCarConfigs(); renderMemberTable();
+    }
+    function downloadCsv() {
+      if (!latestResult) return;
+      const rows = [["集合場所","号車","運転者種別","運転者","定員","役割","表示名","氏名","学年","補足","要望"]];
+      for (const car of latestResult.cars) for (const p of car.passengers) rows.push([car.route, car.carNumber, car.driverType === "executive" ? "実行委員" : "学生", getCarDriverLabel(car), car.capacity, p.id === car.studentDriverId ? "学生運転者" : "乗車", p.displayName, p.fullName, p.grade, p.dayNote, p.request]);
+      for (const m of latestResult.trainMembers) rows.push([m.ridePlace, "", "", "", "", "未配車", m.displayName, m.fullName, m.grade, m.dayNote, m.request]);
+      const csv = rows.map(row => row.map(cell => `"${String(cell ?? "").replaceAll('"','""')}"`).join(",")).join("\n");
+      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "送迎割り振り結果.csv"; link.click(); URL.revokeObjectURL(url);
+    }
+
+    fileInput.addEventListener("change", async event => {
+      hideError(); hideSuccess(fileMessage); const file = event.target.files[0]; if (!file) return;
+      try { const buffer = await file.arrayBuffer(); const workbook = XLSX.read(buffer,{type:"array"}); const sheet = workbook.Sheets[workbook.SheetNames[0]]; rawRows = XLSX.utils.sheet_to_json(sheet,{defval:""});
+        if (!rawRows.length) { showError("読み込んだファイルに回答データがありません。"); return; }
+        columns = Object.keys(rawRows[0]); fillColumnSelects(); buildMembers(); columnSection.style.display = "block"; showSuccess(fileMessage, `${file.name} を読み込みました。回答数：${rawRows.length}件`);
+      } catch (error) { console.error(error); showError("ファイルを読み込めませんでした。ExcelまたはCSV形式か確認してください。"); }
+    });
+    document.getElementById("applyColumnsButton").addEventListener("click", buildMembers);
+    document.getElementById("assignButton").addEventListener("click", () => { if (!members.length) { showError("先にExcel / CSVを読み込んでください。"); return; } hideError(); assignCars(); });
+    document.getElementById("resetButton").addEventListener("click", resetDaySettings);
+    document.getElementById("copyButton").addEventListener("click", async () => { await navigator.clipboard.writeText(document.getElementById("lineText").value); const msg = document.getElementById("copyMessage"); msg.style.display = "block"; setTimeout(() => msg.style.display = "none", 1500); });
+    document.getElementById("downloadButton").addEventListener("click", downloadCsv);
+    document.getElementById("addRouteButton").addEventListener("click", () => { routeConfigs.push({ id: `route-${Date.now()}`, name: "", time: "", leader: "", enabled: true }); renderRouteSettings(); ensureCarConfigs(); if (members.length) renderMemberTable(); });
+    carCountInput.addEventListener("input", ensureCarConfigs); defaultCapacityInput.addEventListener("input", ensureCarConfigs);
+    sortModeInput.addEventListener("change", () => { if (members.length) renderMemberTable(); if (latestResult) renderResults(latestResult); });
+    renderRouteSettings(); ensureCarConfigs();
+  </script>
+</body>
+</html>
